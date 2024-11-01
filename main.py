@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Cargar el dataset para analizar su estructura y contenido.
 file_path = 'MoviTranformado.csv'
-movies_df = pd.read_csv(file_path)
+data = pd.read_csv(file_path)
 
 app = FastAPI()
 
