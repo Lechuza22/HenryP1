@@ -1,15 +1,19 @@
+from typing import Optional
 from fastapi import FastAPI
 import pandas as pd
-from datetime import datetime
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Cargar el dataset para analizar su estructura y contenido.
+file_path = 'MoviTranformado.csv'
+movies_df = pd.read_csv(file_path
 
 app = FastAPI()
 
-# Cargar el archivo CSV al iniciar la aplicación
-data = pd.read_csv("MoviTransformado.csv")
 
 @app.get("/")
 def read_root():
-    return {"Bienvenido al proyecto de Jero"}
+    return {"Bienvenid jero capo de la vida"}
 
 @app.get("/mes")
 def cantidad_filmaciones_mes(mes: str):
@@ -38,6 +42,7 @@ def cantidad_filmaciones_mes(mes: str):
     cantidad = len(peliculas_mes)
     
     return {"mensaje": f"{cantidad} cantidad de películas fueron estrenadas en el mes de {mes.capitalize()}"}
+
 
 @app.get("/dia")
 def cantidad_filmaciones_dia(dia: str):
@@ -107,3 +112,4 @@ def votos_titulo(titulo_de_la_filmacion: str):
     return {
         "mensaje": f"La película '{titulo}' fue estrenada en el año {anio_estreno}. La misma cuenta con un total de {cantidad_votos} valoraciones, con un promedio de {promedio_votos}."
     }
+
