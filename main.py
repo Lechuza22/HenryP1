@@ -4,10 +4,12 @@ from datetime import datetime
 
 app = FastAPI()
 
+# Cargar el archivo CSV al iniciar la aplicación
+data = pd.read_csv("MoviTransformado.csv")
+
 @app.get("/")
 def read_root():
-    return {"Bienvenido"}
-
+    return {"Bienvenido al proyecto de Jero"}
 
 @app.get("/mes")
 def cantidad_filmaciones_mes(mes: str):
