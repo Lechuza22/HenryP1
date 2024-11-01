@@ -1,19 +1,17 @@
-from typing import Optional
 from fastapi import FastAPI
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
 
-# Cargar el dataset para analizar su estructura y contenido.
-file_path = 'MoviTranformado.csv'
-data = pd.read_csv(file_path)
-
+# Inicializar la aplicación FastAPI
 app = FastAPI()
+
+# Cargar el archivo CSV al iniciar la aplicación
+data = pd.read_csv("MoviTransformado.csv")
 
 
 @app.get("/")
 def read_root():
-    return {"Bienvenid jero capo de la vida"}
+    return {"Bienvenido al proyecto de Jero"}     
 
 @app.get("/mes")
 def cantidad_filmaciones_mes(mes: str):
@@ -44,72 +42,82 @@ def cantidad_filmaciones_mes(mes: str):
     return {"mensaje": f"{cantidad} cantidad de películas fueron estrenadas en el mes de {mes.capitalize()}"}
 
 
+
+
+# Definir el endpoint para cantidad_filmaciones_dia
 @app.get("/dia")
 def cantidad_filmaciones_dia(dia: str):
-    # Convertir el día a minúsculas para evitar problemas de mayúsculas
-    dia = dia.lower()
-
-    # Diccionario para convertir el nombre del día en español al número correspondiente
-    dias = {
-        "lunes": 0, "martes": 1, "miércoles": 2, "miercoles": 2,
-        "jueves": 3, "viernes": 4, "sábado": 5, "sabado": 5, "domingo": 6
-    }
-
-    # Validar si el día ingresado es válido
-    if dia not in dias:
-        return {"error": "Día ingresado no válido. Por favor, ingrese un día en español."}
-
-    # Obtener el número del día correspondiente (0=Lunes, 6=Domingo)
-    numero_dia = dias[dia]
-
-    # Convertir la columna de fechas al tipo datetime si es necesario
-    data['release_date'] = pd.to_datetime(data['release_date'], errors='coerce')
-
-    # Filtrar las películas estrenadas en el día especificado
-    peliculas_dia = data[data['release_date'].dt.dayofweek == numero_dia]
-    cantidad = len(peliculas_dia)
-
-    return {"mensaje": f"{cantidad} cantidad de películas fueron estrenadas en los días {dia.capitalize()}"}
+    dia = dia.capitalize()  # Ajustar la capitalización para comparación
+    cantidad = data[data['dia_semana'] == dia].shape[0]  # Contar películas
+    return {"mensaje": f"{cantidad} películas fueron estrenadas en los días {dia}"}
 
 
-@app.get("/score_titulo")
-def score_titulo(titulo_de_la_filmacion: str):
-    # Filtrar el dataset para encontrar la película que coincida con el título
-    pelicula = data[data['title'].str.lower() == titulo_de_la_filmacion.lower()]
+# Diccionario para traducir nombres de días de inglés a español
+dias_traduccion = {
+    "Monday": "Lunes",
+    "Tuesday": "Martes",
+    "Wednesday": "Miércoles",
+    "Thursday": "Jueves",
+    "Friday": "Viernes",
+    "Saturday": "Sábado",
+    "Sunday": "Domingo"
+}
 
+# Convertir la columna de fecha a formato de fecha y extraer el día de la semana en inglés
+data['release_date'] = pd.to_datetime(data['release_date'], errors='coerce')
+data['dia_semana'] = data['release_date'].dt.day_name()
+data['dia_semana'] = data['dia_semana'].map(dias_traduccion)  # Traducir a español
+
+
+
+
+
+
+@app.get("/titulo")
+def score_titulo(titulo: str):
+    # Buscar la película por título
+    film = data[data['title'].str.lower() == titulo.lower()]
+    
     # Verificar si se encontró la película
-    if pelicula.empty:
-        return {"error": "No se encontró ninguna película con ese título."}
-
-    # Extraer la información relevante
-    titulo = pelicula.iloc[0]['title']
-    anio_estreno = pd.to_datetime(pelicula.iloc[0]['release_date']).year
-    score = pelicula.iloc[0]['popularity']  # Cambia 'popularity' si la columna tiene otro nombre
-
+    if film.empty:
+        return {"error": "Película no encontrada"}
+    
+    # Extraer la información deseada
+    titulo = film.iloc[0]['title']
+    año = int(film.iloc[0]['release_year'])
+    score = film.iloc[0]['popularity']
+    
     return {
-        "mensaje": f"La película '{titulo}' fue estrenada en el año {anio_estreno} con un score/popularidad de {score}"
+        "mensaje": f"La película {titulo} fue estrenada en el año {año} con un score/popularidad de {score}"
     }
 
-@app.get("/votos_titulo")
+
+@app.get("/")
+def read_root():
+    return {"message": "Bienvenido a la API de información de películas"}
+
+@app.get("/votos_titulo/{titulo_de_la_filmacion}")
 def votos_titulo(titulo_de_la_filmacion: str):
-    # Filtrar el dataset para encontrar la película que coincida con el título
+    # Filtrar la película por título
     pelicula = data[data['title'].str.lower() == titulo_de_la_filmacion.lower()]
-
-    # Verificar si se encontró la película
+    
+    # Comprobar si existe la película
     if pelicula.empty:
-        return {"error": "No se encontró ninguna película con ese título."}
+        raise HTTPException(status_code=404, detail="Película no encontrada")
 
-    # Extraer la información relevante
+    # Obtener el número de votos y el promedio de votos
+    votos = pelicula.iloc[0]['vote_count']
+    promedio_votos = pelicula.iloc[0]['vote_average']
     titulo = pelicula.iloc[0]['title']
-    anio_estreno = pd.to_datetime(pelicula.iloc[0]['release_date']).year
-    cantidad_votos = pelicula.iloc[0]['vote_count']  # Cambia 'vote_count' si la columna tiene otro nombre
-    promedio_votos = pelicula.iloc[0]['vote_average']  # Cambia 'vote_average' si la columna tiene otro nombre
+    anio = int(pelicula.iloc[0]['release_year'])
 
-    # Verificar si la película cumple con el requisito de al menos 2000 valoraciones
-    if cantidad_votos < 2000:
-        return {"mensaje": f"La película '{titulo}' no cuenta con al menos 2000 valoraciones, por lo que no se devuelve ningún valor."}
-
+    # Validar si cumple con al menos 2000 votos
+    if votos < 2000:
+        return {"message": f"La película '{titulo}' no cumple con el requisito de 2000 valoraciones."}
+    
+    # Retornar la información si cumple el requisito
     return {
-        "mensaje": f"La película '{titulo}' fue estrenada en el año {anio_estreno}. La misma cuenta con un total de {cantidad_votos} valoraciones, con un promedio de {promedio_votos}."
+        "message": f"La película '{titulo}' fue estrenada en el año {anio}.",
+        "votos_totales": votos,
+        "promedio_votos": promedio_votos
     }
-
