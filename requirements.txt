@@ -14,9 +14,7 @@ python-dateutil
 pytz
 six
 sniffio
-sklearn
 starlette
 typing_extensions
 tzdata
-TfidfVectorizer
 uvicorn
