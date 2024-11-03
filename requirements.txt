@@ -3,7 +3,6 @@ anyio
 click
 colorama
 fastapi
-fastparquet
 h11
 idna
 mysql-connector-python
@@ -16,7 +15,6 @@ python-dateutil
 pytz
 six
 sniffio
-scipy
 scikit-learn
 starlette
 typing_extensions
