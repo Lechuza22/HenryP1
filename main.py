@@ -166,6 +166,7 @@ def get_director(nombre_director: str):
         "detalles_peliculas": detalles_peliculas
     }
 # Función recomendación
+@app.get("/SistRecomendacion")
 def recomendacion(titulo):
     # Comprobar si el título existe en el dataset
     if titulo not in data['title'].values:
