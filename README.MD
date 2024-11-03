@@ -28,8 +28,8 @@ Tranformaciones en Credits.
 1. Cargamos el archivo. 
 2. Ver estructura de las primeras filas para entender la columna 'cast' y 'crew', que son las que vamos a desanidar.
 3. Desanidamos ambas columnas y de csat nos quedamos con los nombres de los actores. y Con crew nos quedamos con "job" y los "name" de los "directos". 
-. Nos quedamos con las columnas: "id", "actors", "Directors". 
-        5. Exportamos a CSV: credits_limpio
+4. Nos quedamos con las columnas: "id", "actors", "Directors". 
+5. Exportamos a CSV: credits_limpio
 
 Para terminar el ETL decidí unir los datasets: Se realizó la unión entre el dataset creditslimpio.csv y MoviTranformado.csv usando la columna "ID" como anclaje. Este merge se realizo para poder hacer funcionar las apis de directores y actores. 
 
