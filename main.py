@@ -7,9 +7,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Cargar el archivo CSV al iniciar la aplicación
 file_path = 'mergeLimpio.csv'
 data = pd.read_csv(file_path)
-# Cargar el dataset para analizar su estructura y contenido.
-file_path = 'mergeLimpio.csv'
-movies_df = pd.read_csv(file_path)
 
 app = FastAPI()
 
@@ -170,28 +167,3 @@ def get_director(nombre_director: str):
         "mensaje": f"El director {nombre_director} ha conseguido un retorno total de {retorno_total}.",
         "detalles_peliculas": detalles_peliculas
     }
-
-
-# Función recomendación
-def recomendacion(titulo):
-    # Comprobar si el título existe en el dataset
-    if titulo not in movies_df['title'].values:
-        return "La película no se encuentra en el dataset."
-
-    # Vectorizar los títulos de las películas usando TF-IDF
-    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = tfidf_vectorizer.fit_transform(movies_df['title'].fillna(''))
-
-    # Encontrar el índice de la película en el DataFrame
-    idx = movies_df[movies_df['title'] == titulo].index[0]
-
-    # Calcular la similitud de coseno entre la película de interés y todas las demás
-    cosine_similarities = cosine_similarity(tfidf_matrix[idx], tfidf_matrix).flatten()
-
-    # Obtener los índices de las 5 películas más similares (excluyendo la misma película)
-    similar_indices = cosine_similarities.argsort()[::-1][1:6]
-
-    # Obtener los títulos de las películas recomendadas
-    recommended_titles = movies_df.iloc[similar_indices]['title'].values.tolist()
-
-    return recommended_titles
