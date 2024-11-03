@@ -1,6 +1,8 @@
 from typing import Optional
 from fastapi import FastAPI
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI()
 
@@ -163,3 +165,27 @@ def get_director(nombre_director: str):
         "mensaje": f"El director {nombre_director} ha conseguido un retorno total de {retorno_total}.",
         "detalles_peliculas": detalles_peliculas
     }
+# Función recomendación
+def recomendacion(titulo):
+    # Comprobar si el título existe en el dataset
+    if titulo not in data['title'].values:
+        return "La película no se encuentra en el dataset."
+
+    # Vectorizar los títulos de las películas usando TF-IDF
+    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = tfidf_vectorizer.fit_transform(data['title'].fillna(''))
+
+    # Encontrar el índice de la película en el DataFrame
+    idx = data[data['title'] == titulo].index[0]
+
+    # Calcular la similitud de coseno entre la película de interés y todas las demás
+    cosine_similarities = cosine_similarity(tfidf_matrix[idx], tfidf_matrix).flatten()
+
+    # Obtener los índices de las 5 películas más similares (excluyendo la misma película)
+    similar_indices = cosine_similarities.argsort()[::-1][1:6]
+
+    # Obtener los títulos de las películas recomendadas
+    recommended_titles = data.iloc[similar_indices]['title'].values.tolist()
+
+    return recommended_titles
+
