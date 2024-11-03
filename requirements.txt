@@ -18,4 +18,5 @@ sklearn
 starlette
 typing_extensions
 tzdata
+TfidfVectorizer
 uvicorn
