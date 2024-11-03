@@ -3,10 +3,12 @@ anyio
 click
 colorama
 fastapi
+fastparquet
 h11
 idna
 mysql-connector-python
 numpy
+matplolib
 pandas
 pydantic
 pydantic_core
@@ -14,6 +16,8 @@ python-dateutil
 pytz
 six
 sniffio
+scipy
+scikit-learn
 starlette
 typing_extensions
 tzdata
