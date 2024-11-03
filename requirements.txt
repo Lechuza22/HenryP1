@@ -7,7 +7,6 @@ h11
 idna
 mysql-connector-python
 numpy
-matplolib
 pandas
 pydantic
 pydantic_core
@@ -15,7 +14,6 @@ python-dateutil
 pytz
 six
 sniffio
-scikit-learn
 starlette
 typing_extensions
 tzdata
