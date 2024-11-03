@@ -1,19 +1,15 @@
 from typing import Optional
 from fastapi import FastAPI
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Cargar el archivo CSV al iniciar la aplicación
-file_path = 'mergeLimpio.csv'
-data = pd.read_csv(file_path)
 
 app = FastAPI()
 
-
 @app.get("/")
 def read_root():
-    return {"Bienvenid jero capo de la vida"}
+    return {"Bienvenidos al proyecto de Jero"}
+
+# Cargar el archivo CSV al iniciar la aplicación
+data = pd.read_csv("MergeLimpio.csv")
 
 @app.get("/mes")
 def cantidad_filmaciones_mes(mes: str):
