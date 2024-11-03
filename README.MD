@@ -42,10 +42,10 @@ Una vez terminada la normalización, cargamos los datos al repositorio personal 
 
 # 2. Diseño de las APIs y el sistema de recomendación.
 
-Mientras realizaba la normalización de los datos, creamos el entorno virtual en Python, el cual lo pusheamos al GitHub. 
-En el entorno virtual trabajamos con el archivo main.py, el cual contienen las apis y el sistema de recomendación. 
-TAmbien el entorno virtual creo el archivo Requeriments donde se puse las librerías que utilice. 
-En el archivo Main.py se puede ver desarrolado el código, con sus comentarios sobre las apis y el sistema de recomendación. (En primer lugar fue probado en visualStudio y luego fue probado en render). Me parece redundante subir aqui el codigo de las apis y sus comentarios estando en el archivo. Por lo pronto describo lo que use: 
+Mientras realizaba la normalización de los datos, creamos el entorno virtual en nuestro local, el cual lo pusheamos al GitHub via visualstudiocode. 
+En el entorno virtual que subimos a Github trabajamos con el archivo main.py, el cual contienen las apis y el sistema de recomendación. 
+También el entorno virtual creo el archivo Requeriments donde se puse las librerías que utilice. 
+En el archivo Main.py se puede ver desarrolado el código, con sus comentarios sobre las apis y el sistema de recomendación. (En primer lugar fue probado en visualStudio y luego fue probado y deployado en render). Me parece redundante subir aqui el codigo de las apis y sus comentarios estando en el archivo. 
 
 # 3. Repositorio en Git y deploy en render.
 
