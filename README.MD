@@ -49,7 +49,7 @@ En el archivo Main.py se puede ver desarrolado el código, con sus comentarios s
 
 # 3. Repositorio en Git y deploy en render.
 
-Una vez las Apis desarrolladas en github en el archivo main.py fueron deployadas con éxito en render, donde se pudieron probar y ejecutar correctamente: https://henryp1.onrender.com/docs Aqui podrás acceder para probarlas en caso oportuno. 
+Una vez las Apis desarrolladas en github en el archivo main.py fueron deployadas con éxito en render, donde se pudieron probar y ejecutar correctamente: https://henryp1.onrender.com/docs Aqui podrás acceder para probarlas en caso oportuno en sus respectivos endpoints. 
 
 # 4. Analisis exploratorio de los datos EDA. 
 
