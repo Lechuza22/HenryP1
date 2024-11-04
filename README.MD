@@ -19,7 +19,7 @@ Siguiendo el criterio de la consigna realiamos las siguientes tranformaciones en
 6. Convertimos a formato año la columna realease.
 7. Extrajimos el año y creamos una neuva columnas: release year
 8. Eliminamos datos nulos de release date
-9.Convertimos variable a numerica para realizar la acción
+9. Convertimos variable a numerica para realizar la acción
 10. Creamos una nueva columna: return desde revenue y budget.
 11. Extracción de datos anidados de "production_companies" y nos quedamos con "name"
 12. Exportamos a CVS MoviTranforamdo
