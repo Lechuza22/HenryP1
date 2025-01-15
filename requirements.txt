@@ -1,9 +1,8 @@
 fastapi
-fastparquet
-numpy
 pandas
-uvicorn
+numpy
+plotly
 scikit-learn
-matplotlib
-scipy
+dash
+uvicorn
 
