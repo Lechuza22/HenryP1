@@ -1,192 +1,175 @@
-from typing import Optional
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import plotly.express as px
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from dash import Dash, dcc, html, Input, Output, dash_table
+from starlette.middleware.wsgi import WSGIMiddleware
+import logging
 
-app = FastAPI()
+# Configuración del logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-@app.get("/")
-def read_root():
-    return {"Bienvenidos al proyecto de Jero"}
+try:
+    # Configuración de FastAPI
+    app = FastAPI()
 
-# Cargar el archivo CSV al iniciar la aplicación
-data = pd.read_csv("MergeLimpio.csv")
+    # Cargar datasets
+    taxi_data_path = 'green_tripdata_2024-10_reducido.csv'
+    yellow_taxi_path = 'Yellow_Tripdata_2024-10_reducido.csv'
+    zone_data_path = 'transformed_taxi_zone_merged_with_locations.csv'
 
-@app.get("/mes")
-def cantidad_filmaciones_mes(mes: str):
-    # Convertir el mes a minúsculas para evitar problemas de mayúsculas
-    mes = mes.lower()
-    
-    # Diccionario para convertir el nombre del mes en español al número correspondiente
-    meses = {
-        "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
-        "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
-        "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12
-    }
-    
-    # Validar si el mes ingresado es válido
-    if mes not in meses:
-        return {"error": "Mes ingresado no válido. Por favor, ingrese un mes en español."}
-    
-    # Obtener el número del mes correspondiente
-    numero_mes = meses[mes]
-    
-    # Convertir la columna de fechas al tipo datetime si es necesario
-    data['release_date'] = pd.to_datetime(data['release_date'], errors='coerce')
-    
-    # Filtrar las películas estrenadas en el mes especificado
-    peliculas_mes = data[data['release_date'].dt.month == numero_mes]
-    cantidad = len(peliculas_mes)
-    
-    return {"mensaje": f"{cantidad} cantidad de películas fueron estrenadas en el mes de {mes.capitalize()}"}
+    taxi_data = pd.read_csv(taxi_data_path)
+    yellow_data = pd.read_csv(yellow_taxi_path)
+    zone_data = pd.read_csv(zone_data_path)
 
+    # Preprocesar datos
+    taxi_data['lpep_pickup_datetime'] = pd.to_datetime(taxi_data['lpep_pickup_datetime'], errors='coerce')
+    yellow_data['tpep_pickup_datetime'] = pd.to_datetime(yellow_data['tpep_pickup_datetime'], errors='coerce')
 
-@app.get("/dia")
-def cantidad_filmaciones_dia(dia: str):
-    # Convertir el día a minúsculas para evitar problemas de mayúsculas
-    dia = dia.lower()
+    taxi_data = taxi_data.dropna(subset=['lpep_pickup_datetime'])
+    yellow_data = yellow_data.dropna(subset=['tpep_pickup_datetime'])
 
-    # Diccionario para convertir el nombre del día en español al número correspondiente
-    dias = {
-        "lunes": 0, "martes": 1, "miércoles": 2, "miercoles": 2,
-        "jueves": 3, "viernes": 4, "sábado": 5, "sabado": 5, "domingo": 6
-    }
+    taxi_data['pickup_hour'] = taxi_data['lpep_pickup_datetime'].dt.hour
+    taxi_data['pickup_day'] = taxi_data['lpep_pickup_datetime'].dt.day_name().map({'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles', 'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'})
 
-    # Validar si el día ingresado es válido
-    if dia not in dias:
-        return {"error": "Día ingresado no válido. Por favor, ingrese un día en español."}
+    yellow_data['pickup_hour'] = yellow_data['tpep_pickup_datetime'].dt.hour
+    yellow_data['pickup_day'] = yellow_data['tpep_pickup_datetime'].dt.day_name().map({'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles', 'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'})
 
-    # Obtener el número del día correspondiente (0=Lunes, 6=Domingo)
-    numero_dia = dias[dia]
+    data = taxi_data.merge(zone_data, left_on='PULocationID', right_on='locationid_x', how='left')
+    data = data[data['borough_x'].notna()]
+    data = data[data['borough_x'].isin(['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR'])]
+    data['zone_name'] = data['borough_x']
+    data['pickup_hour'] = data['pickup_hour'].astype(int)
+    data['pickup_day'] = data['pickup_day']
 
-    # Convertir la columna de fechas al tipo datetime si es necesario
-    data['release_date'] = pd.to_datetime(data['release_date'], errors='coerce')
+    yellow_data = yellow_data.merge(zone_data, left_on='PULocationID', right_on='locationid_x', how='left')
+    yellow_data = yellow_data[yellow_data['borough_x'].notna()]
+    yellow_data = yellow_data[yellow_data['borough_x'].isin(['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island', 'EWR'])]
+    yellow_data['zone_name'] = yellow_data['borough_x']
+    yellow_data['pickup_hour'] = yellow_data['pickup_hour'].astype(int)
+    yellow_data['pickup_day'] = yellow_data['pickup_day']
 
-    # Filtrar las películas estrenadas en el día especificado
-    peliculas_dia = data[data['release_date'].dt.dayofweek == numero_dia]
-    cantidad = len(peliculas_dia)
+    def remove_outliers(df, column):
+        Q1 = df[column].quantile(0.25)
+        Q3 = df[column].quantile(0.75)
+        IQR = Q3 - Q1
+        return df[(df[column] >= Q1 - 1.5 * IQR) & (df[column] <= Q3 + 1.5 * IQR)]
 
-    return {"mensaje": f"{cantidad} cantidad de películas fueron estrenadas en los días {dia.capitalize()}"}
+    data = remove_outliers(data, 'trip_distance')
+    data = remove_outliers(data, 'fare_amount')
+    yellow_data = remove_outliers(yellow_data, 'trip_distance')
+    yellow_data = remove_outliers(yellow_data, 'fare_amount')
 
+    def calculate_weekly_demand(day_of_week, df):
+        day_data = df[df['pickup_day'] == day_of_week]
+        zone_summary = (
+            day_data.groupby('zone_name')
+            .agg({
+                'fare_amount': 'mean',
+                'trip_distance': 'mean',
+                'zone_name': 'count',
+                'pickup_hour': lambda x: x.value_counts().idxmax()
+            })
+            .rename(columns={
+                'fare_amount': 'avg_earning',
+                'trip_distance': 'avg_distance',
+                'zone_name': 'trip_count',
+                'pickup_hour': 'peak_hour'
+            })
+            .reset_index()
+        )
+        return zone_summary.sort_values(by='trip_count', ascending=False)
 
-@app.get("/score_titulo")
-def score_titulo(titulo_de_la_filmacion: str):
-    # Filtrar el dataset para encontrar la película que coincida con el título
-    pelicula = data[data['title'].str.lower() == titulo_de_la_filmacion.lower()]
+    def calculate_heatmap_data(df):
+        heatmap_data = (
+            df.groupby(['pickup_day', 'pickup_hour'])
+            .size()
+            .reset_index(name='trip_count')
+        )
+        hours = pd.DataFrame({'pickup_hour': range(24)})
+        days = pd.DataFrame({'pickup_day': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']})
+        full_index = hours.merge(days, how='cross')
+        heatmap_data = full_index.merge(heatmap_data, on=['pickup_hour', 'pickup_day'], how='left').fillna(0)
+        return heatmap_data
 
-    # Verificar si se encontró la película
-    if pelicula.empty:
-        return {"error": "No se encontró ninguna película con ese título."}
+    def predict_best_time_and_route(zone, df, day):
+        zone_data = df[(df['zone_name'] == zone) & (df['pickup_day'] == day)]
+        features = zone_data[['pickup_hour', 'trip_distance', 'passenger_count']]
+        target = zone_data['fare_amount']
 
-    # Extraer la información relevante
-    titulo = pelicula.iloc[0]['title']
-    anio_estreno = pd.to_datetime(pelicula.iloc[0]['release_date']).year
-    score = pelicula.iloc[0]['popularity']  # Cambia 'popularity' si la columna tiene otro nombre
+        if len(features) > 0 and len(target) > 0:
+            features = pd.get_dummies(features, columns=['pickup_hour'], drop_first=True)
+            X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+            model = RandomForestRegressor()
+            model.fit(X_train, y_train)
+            predictions = model.predict(X_test)
+            best_row = X_test.iloc[np.argmax(predictions)]
 
-    return {
-        "mensaje": f"La película '{titulo}' fue estrenada en el año {anio_estreno} con un score/popularidad de {score}"
-    }
+            best_time = [int(col.split('_')[-1]) for col in best_row.index if col.startswith('pickup_hour_') and best_row[col]][0]
+            avg_distance = zone_data['trip_distance'].mean()
+            avg_fare = zone_data['fare_amount'].mean()
 
-@app.get("/votos_titulo")
-def votos_titulo(titulo_de_la_filmacion: str):
-    # Filtrar el dataset para encontrar la película que coincida con el título
-    pelicula = data[data['title'].str.lower() == titulo_de_la_filmacion.lower()]
+            return best_time, avg_distance, avg_fare
 
-    # Verificar si se encontró la película
-    if pelicula.empty:
-        return {"error": "No se encontró ninguna película con ese título."}
+        return None, None, None
 
-    # Extraer la información relevante
-    titulo = pelicula.iloc[0]['title']
-    anio_estreno = pd.to_datetime(pelicula.iloc[0]['release_date']).year
-    cantidad_votos = pelicula.iloc[0]['vote_count']  # Cambia 'vote_count' si la columna tiene otro nombre
-    promedio_votos = pelicula.iloc[0]['vote_average']  # Cambia 'vote_average' si la columna tiene otro nombre
+    # Configuración de Dash
+    dash_app = Dash(__name__)
+    dash_app.layout = html.Div([
+        dcc.Tabs([
+            dcc.Tab(label='Taxis Verdes', children=[
+                html.H1("Demanda de Taxis Verdes"),
+                dcc.Dropdown(
+                    id='day-dropdown-green',
+                    options=[{'label': day, 'value': day} for day in ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']],
+                    value='Lunes'
+                ),
+                dcc.Graph(id='demand-chart-green'),
+                dcc.Graph(id='avg-earning-chart-green'),
+            ]),
+            dcc.Tab(label='Taxis Amarillos', children=[
+                html.H1("Demanda de Taxis Amarillos"),
+                dcc.Dropdown(
+                    id='day-dropdown-yellow',
+                    options=[{'label': day, 'value': day} for day in ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']],
+                    value='Lunes'
+                ),
+                dcc.Graph(id='demand-chart-yellow'),
+                dcc.Graph(id='avg-earning-chart-yellow'),
+            ])
+        ])
+    ])
 
-    # Verificar si la película cumple con el requisito de al menos 2000 valoraciones
-    if cantidad_votos < 2000:
-        return {"mensaje": f"La película '{titulo}' no cuenta con al menos 2000 valoraciones, por lo que no se devuelve ningún valor."}
+    # Callbacks de Dash
+    @dash_app.callback(
+        [Output('demand-chart-green', 'figure'), Output('avg-earning-chart-green', 'figure')],
+        Input('day-dropdown-green', 'value')
+    )
+    def update_green_charts(day):
+        demand_data = calculate_weekly_demand(day, data)
+        fig_demand = px.bar(
+            demand_data, x='zone_name', y='trip_count',
+            title=f"Demanda el {day}", color='avg_earning'
+        )
+        fig_earning = px.bar(
+            demand_data, x='zone_name', y='avg_earning',
+            title=f"Ganancia Promedio el {day}"
+        )
+        return fig_demand, fig_earning
 
-    return {
-        "mensaje": f"La película '{titulo}' fue estrenada en el año {anio_estreno}. La misma cuenta con un total de {cantidad_votos} valoraciones, con un promedio de {promedio_votos}."
-    }
+    # Montar Dash en FastAPI
+    app.mount("/dashboard", WSGIMiddleware(dash_app.server))
 
-@app.get("/actor")
-def get_actor(nombre_actor: str):
-    # Filtrar el dataset para encontrar las películas en las que ha participado el actor
-    peliculas_actor = data[data['actors'].str.contains(nombre_actor, case=False, na=False)]
+    # Ruta de FastAPI para la raíz
+    @app.get("/")
+    def read_root():
+        return HTMLResponse("<h1>Bienvenido a la API</h1><p>Visita <a href='/dashboard'>/dashboard</a></p>")
 
-    # Verificar si el actor tiene alguna película en el dataset
-    if peliculas_actor.empty:
-        return {"error": f"No se encontró ningún registro para el actor {nombre_actor}."}
+    logger.info("App inicializada correctamente")
 
-    # Calcular la cantidad de películas
-    cantidad_peliculas = len(peliculas_actor)
-
-    # Calcular el retorno total y el promedio de retorno por película
-    retorno_total = peliculas_actor['return'].sum()  # Cambia 'return' si la columna tiene otro nombre
-    promedio_retorno = retorno_total / cantidad_peliculas if cantidad_peliculas > 0 else 0
-
-    return {
-        "mensaje": f"El actor {nombre_actor} ha participado de {cantidad_peliculas} cantidad de filmaciones, el mismo ha conseguido un retorno de {retorno_total} con un promedio de {promedio_retorno} por filmación."
-    }
-
-
-@app.get("/director")
-def get_director(nombre_director: str):
-    # Filtrar el dataset para encontrar las películas dirigidas por el director
-    peliculas_director = data[data['directors'].str.contains(nombre_director, case=False, na=False)]
-
-    # Verificar si el director tiene alguna película en el dataset
-    if peliculas_director.empty:
-        return {"error": f"No se encontró ningún registro para el director {nombre_director}."}
-
-    # Calcular el retorno total del director
-    retorno_total = peliculas_director['return'].sum()  # Cambia 'return' si la columna tiene otro nombre
-
-    # Crear una lista para almacenar los detalles de cada película
-    detalles_peliculas = []
-    for _, pelicula in peliculas_director.iterrows():
-        titulo = pelicula['title']
-        fecha_lanzamiento = pelicula['release_date']
-        retorno_individual = pelicula['return']  # Cambia 'return' si la columna tiene otro nombre
-        costo = pelicula['budget']  # Cambia 'budget' si la columna tiene otro nombre
-        ganancia = pelicula['revenue']  # Cambia 'revenue' si la columna tiene otro nombre
-        
-        detalles_peliculas.append({
-            "titulo": titulo,
-            "fecha_lanzamiento": fecha_lanzamiento,
-            "retorno_individual": retorno_individual,
-            "costo": costo,
-            "ganancia": ganancia
-        })
-
-    return {
-        "mensaje": f"El director {nombre_director} ha conseguido un retorno total de {retorno_total}.",
-        "detalles_peliculas": detalles_peliculas
-    }
-# Función recomendación
-@app.get("/SistRecomendacion")
-def recomendacion(titulo):
-    # Comprobar si el título existe en el dataset
-    if titulo not in data['title'].values:
-        return "La película no se encuentra en el dataset."
-
-    # Vectorizar los títulos de las películas usando TF-IDF
-    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = tfidf_vectorizer.fit_transform(data['title'].fillna(''))
-
-    # Encontrar el índice de la película en el DataFrame
-    idx = data[data['title'] == titulo].index[0]
-
-    # Calcular la similitud de coseno entre la película de interés y todas las demás
-    cosine_similarities = cosine_similarity(tfidf_matrix[idx], tfidf_matrix).flatten()
-
-    # Obtener los índices de las 5 películas más similares (excluyendo la misma película)
-    similar_indices = cosine_similarities.argsort()[::-1][1:6]
-
-    # Obtener los títulos de las películas recomendadas
-    recommended_titles = data.iloc[similar_indices]['title'].values.tolist()
-
-    return recommended_titles
-
+except Exception as e:
+    logger.error(f"Error al inicializar la app: {e}")
